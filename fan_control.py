@@ -9,25 +9,28 @@ from pid_controller import PIDController
 PWM_PIN = 'GPIO6'
 TACHO_PIN = 'GPIO12'
 
-LOW_TEMP = 35
-MAX_TEMP = 45
+TARGET_TEMP = 38
+MAX_TEMP = 50
 
-CHECK_SEC = 2
+FAN_MIN = 30
+FAN_MAX = 100
+
+DELTA_T = 1
 
 # PID Parameters
 KP = 2
 KI = 1
 KD = 1
-TAU = 1
-PID_MIN = 0
-PID_MAX = 100
+
+MIN_LIMIT = -100
+MAX_LIMIT = 100
 
 
 class FanControl:
     PULSES_PER_ROTATION = 2
     FAN_FACTOR = 60 / PULSES_PER_ROTATION
     
-    def __init__(self, tacho_pin, pwm_pin, low_temp, max_temp):
+    def __init__(self, tacho_pin, pwm_pin, target_temp, max_temp):
         self.fan = PWMLED(pwm_pin, frequency=25000)
         self.fan.value = 1.0
 
@@ -39,8 +42,9 @@ class FanControl:
         
         self.last_cpu_temp = 0
         
-        self.pid_controller = PIDController(CHECK_SEC, KP, KI, KD, TAU, PID_MIN, PID_MAX)
-        self.low_temp = low_temp
+        self.pid_controller = PIDController(DELTA_T, KP, KI, KD, MIN_LIMIT, MAX_LIMIT, 
+                                            positive_feedback=True)
+        self.target_temp = target_temp
         self.max_temp = max_temp
      
     def _on_tacho_interrupt(self):
@@ -60,16 +64,24 @@ class FanControl:
             return round(float(temp)/1000, 2)
 
     def _get_fan_value(self):
-        self.pid_controller.update(self.low_temp, self.last_cpu_temp)
+        self.pid_controller.update(self.target_temp, self.last_cpu_temp)
         
-        new_value = self.pid_controller.value
-        if new_value < 0:
-            percent_diff = 0
-        else:
-            percent_diff = new_value
+        input_value = self.pid_controller.output
 
-        return round(percent_diff, 2)
+        value_range = MAX_LIMIT - MIN_LIMIT
+                
+        output_range = FAN_MAX - FAN_MIN
+        
+        value_in_percent = FAN_MIN + ((output_range / value_range) * (input_value - MIN_LIMIT))
 
+        print(f'input_value: {input_value} -> output_value: {value_in_percent}')
+        
+        # override
+        if self.last_cpu_temp > self.max_temp:
+            # set to 100% in case we are overtemp
+            value_in_percent = FAN_MAX
+
+        return round(value_in_percent, 2)
 
     def update(self):
         self.last_cpu_temp = self._get_cpu_temp()
@@ -85,12 +97,12 @@ class FanControl:
 
 def main():
     fan_control = FanControl(tacho_pin=TACHO_PIN, pwm_pin=PWM_PIN,
-                             low_temp=LOW_TEMP, max_temp=MAX_TEMP)
+                             target_temp=TARGET_TEMP, max_temp=MAX_TEMP)
 
     while True:
         fan_control.update()
         fan_control.print_current()
-        sleep(CHECK_SEC)
+        sleep(DELTA_T)
 
 
 if __name__ == '__main__':

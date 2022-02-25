@@ -1,65 +1,46 @@
 
 class PIDController:
-    def __init__(self, time, kp, ki, kd, tau, lim_min, lim_max):
+    def __init__(self, dt, kp, ki, kd, min_limit, max_limit, positive_feedback=False):
+        self._dt = dt
+        
         self._kp = kp
         self._ki = ki
         self._kd = kd
-        self._tau = tau
-        self._lim_min = lim_min
-        self._lim_max = lim_max
-        self._time = time
-        self._integrator = 0
-        self._prev_delta = 0
-        self._differentiator = 0
-        self._prev_measure = 0
-        self._out = 0
 
-    def update(self, setpoint, measure):
-        delta_value = setpoint-measure
-        # error=measure-setpoint
+        self._min_limit = min_limit
+        self._max_limit = max_limit
+
+        self._positive_feedback = positive_feedback
+
+        self._output  = 0
         
-        # Proportional gain
-        proportional = self._kp * delta_value
-        
-        # Integral gain
-        self._integrator += 0.5 * self._ki * self._time * (delta_value + self._prev_delta)
-        
-        # Anti-wind-up
-        if self._lim_max > proportional:
-            integrator_lim_max = self._lim_max - proportional
-        else:
-            integrator_lim_max = 0
+        self._a0 = kp + ki * dt + kd / dt
+        self._a1 = -kp - 2 * kd / dt
+        self._a2 = kd / dt
+
+        # print(f'A0={self._a0} - A1={self._a1} - A2={self._a2}')
+
+        self._error = [0, 0, 0]
+
+    def update(self, setpoint, measured_value):
+        self._error[2] = self._error[1]
+        self._error[1] = self._error[0]
+        self._error[0] = setpoint - measured_value
+
+        final_output = self._output + self._a0 * self._error[0] + self._a1 * self._error[1] + self._a2 * self._error[2]
+
+        if final_output < self._min_limit:
+            final_output = self._min_limit
+        if final_output > self._max_limit:
+            final_output = self._max_limit
             
-        if self._lim_min < proportional:
-            integrator_lim_min = self._lim_min - proportional
-        else:
-            integrator_lim_min = 0
-            
-        # Clamp integrator
-        if self._integrator > integrator_lim_max:
-            self._integrator = integrator_lim_max
-        else:
-            self._integrator = integrator_lim_min
-            
-        # Differentiator gain
-        d = 2 * self._kd * measure - self._prev_measure
-        a = 2 * self._tau - self._time
-        b = 2 * self._tau + self._time
-        self._differentiator = a * self._differentiator / b + d
-        
-        # Calculate output
-        self._out = proportional+self._integrator+self._differentiator
-        
-        # Apply limits
-        if self._out > self._lim_max:
-            self._out = self._lim_max
-        elif self._out < self._lim_min:
-            self._out = self._lim_min
-            
-        # Store data
-        self._prev_delta = delta_value
-        self._prev_measure = measure
+        self._output = final_output
+
+        print(f'error={self._error} output={self._output}')
 
     @property
-    def value(self):
-        return self._out
+    def output(self):
+        final_output = self._output
+        if self._positive_feedback:
+            final_output *= -1
+        return final_output
