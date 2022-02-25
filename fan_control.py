@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import io
 import time
 
 from gpiozero import PWMLED
@@ -12,11 +13,12 @@ from value_mapper import ValueMapper
 PWM_PIN = 'GPIO6'
 TACHO_PIN = 'GPIO12'
 
-TARGET_TEMP = 38
-MAX_TEMP = 50
+MIN_TEMP = 35
+TARGET_TEMP = 40
+MAX_TEMP = 45
 
-FAN_MIN = 30
-FAN_MAX = 100
+FAN_MIN = 0.2
+FAN_MAX = 1.0
 
 DELTA_T = 1
 
@@ -30,13 +32,12 @@ MAX_LIMIT = 100
 
 
 def get_cpu_temp():
-    with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
-        temp = f.readline()
-        return round(float(temp)/1000, 2)
+    with io.open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+        return round(float(f.read().strip()) / 1000, 2)
 
 
 def main():
-    fan = PWMLED(PWM_PIN, frequency=25000)
+    fan = PWMLED(PWM_PIN, frequency=100)
     fan.value = 1.0    # set to 100% in the beginning
 
     tacho = FanTacho(TACHO_PIN)
@@ -57,17 +58,23 @@ def main():
 
         fan_pwm_duty = round(mapper.map(controller_value), 2)
 
-        print(f'controller_value: {controller_value} -> mapped: {fan_pwm_duty}')
+        # print(f'controller_value: {controller_value} -> mapped: {fan_pwm_duty}')
 
-        # override
+        # override (this is more like a safeguard)
+        limit = ''
+        if current_cpu_temp < MIN_TEMP:
+            # turn fan off if we're below min temp
+            fan_pwm_duty = 0
+            limit = 'l'
         if current_cpu_temp > MAX_TEMP:
             # set to 100% in case we are overtemp
             fan_pwm_duty = FAN_MAX
+            limit = 'h'
 
         # actually set fan value
-        fan.value = fan_pwm_duty / 100.0
+        fan.value = fan_pwm_duty 
 
-        print(f'CPU Temp: {current_cpu_temp} C - Fan: {tacho.rpm} rpm - Fan PWM: {fan_pwm_duty} %')
+        print(f'CPU Temp: {current_cpu_temp} C - Fan: {tacho.rpm} rpm - Fan PWM: {fan_pwm_duty*100:.2f} % {limit}')
 
         time.sleep(DELTA_T)
 

@@ -5,10 +5,11 @@ This Python script was created for the purpose to control a PWM FAN Noctua NF-A4
 
 While the original script uses WiringPi this script rebuilds everything on top of gpiozero.
 
-* It is set to use Hardware PWM value clock as 25Khz that was specified by Intel (c.f. “4-Wire Pulse Width Modulation (PWM) Controlled Fans”, Intel Corporation September 2005, revision 1.3). 
 * To read the FAN speed a DigitalInputDevice is used that counts the falling flanks. 
+* Depending on the pin that is used for fan PWM control it uses hardware or software PWM 
 * The temperature is directly read from the linux file system
-* The input values are then used to update an PID controller and the output is directly used to set the PWM duty cycle value
+* The input values are then used to update an PID controller
+* The output of hte PID controller is mapped to the PWM range of the Noctua Fan (20% - 100%)
 
 ## Wiring
 - Set PWM pin to control the FAN (e.g. GPIO6)

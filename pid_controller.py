@@ -36,7 +36,7 @@ class PIDController:
             
         self._output = final_output
 
-        print(f'error={self._error} output={self._output}')
+        # print(f'error={self._error} output={self._output}')
 
     @property
     def output(self):
