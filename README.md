@@ -9,13 +9,13 @@ While the original script uses WiringPi this script rebuilds everything on top o
 * Depending on the pin that is used for fan PWM control gpiozero uses hardware or software PWM (Hardware PWM is available on pins GPIO12, GPIO13, GPIO18, GPIO19)
 * The temperature is directly read from the linux file system
 * The input values are then used to update an PID controller
-* The output of hte PID controller is mapped to the PWM range of the Noctua Fan (20% - 100%)
+* The output of the PID controller is mapped to the PWM range of the Noctua Fan (20% - 100%)
 
 ## Wiring
 - Set PWM pin to control the FAN (e.g. GPIO12)
 - Set TACHO pin to read FAN speed (e.g. GPIO6)
 - The other 2 fan pins can be directly connected to 5V & GND pins
-- CPU usage stays between 1% and 2% (if a higher pwm frequence is used it requires more processing power although it shouldn't)
+- CPU usage stays between 1% and 3% (if a higher pwm frequency is used it requires more processing power although it shouldn't)
 
 ## Dependencies
 * [Python 3](https://www.python.org/download/releases/3.0/) - The script interpreter
@@ -31,6 +31,12 @@ git clone https://github.com/katringoogoo/rpi-pwm-fan-control.git
 cd rpi-pwm-fan-control
 pip3 install -r requirements.txt
 ./rpi-pwmfan.py
+```
+
+Most of the variables from the script can be overridden via commandline arguments. Have a look at
+
+```sh
+./rpi-pwmfan.py -h
 ```
 
 ## Hardware PWM
