@@ -16,11 +16,11 @@ def test_pid_controller():
                       positive_feedback=True)
 
     for i in range(30, 55, 1):
-        c.update(30, i)
+        c.calculate(30, i)
         print(f'temp = {i} value = {c.output}')
 
     for i in range(55, 40, -1):
-        c.update(30, i)
+        c.calculate(30, i)
         print(f'temp = {i} value = {c.output}')
 
 

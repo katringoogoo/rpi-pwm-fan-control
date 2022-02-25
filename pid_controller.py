@@ -22,7 +22,7 @@ class PIDController:
 
         self._error = [0, 0, 0]
 
-    def update(self, setpoint, measured_value):
+    def calculate(self, setpoint, measured_value):
         self._error[2] = self._error[1]
         self._error[1] = self._error[0]
         self._error[0] = setpoint - measured_value
